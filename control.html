@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clippa — Controle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="game.js"></script>
+  <style>
+    :root {
+      --orange: #F97316;
+      --orange-light: #FFF7ED;
+      --orange-hover: #EA6500;
+      --white: #fff;
+      --gray-50: #F9FAFB;
+      --gray-100: #F3F4F6;
+      --gray-200: #E5E7EB;
+      --gray-300: #D1D5DB;
+      --gray-400: #9CA3AF;
+      --gray-500: #6B7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --red: #EF4444;
+      --red-light: #FEF2F2;
+      --green: #10B981;
+      --green-light: #D1FAE5;
+      --blue: #3B82F6;
+      --blue-light: #EFF6FF;
+      --r: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+    /* Header */
+    header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: var(--gray-500);
+      text-decoration: none; border: 1.5px solid var(--gray-200);
+      padding: 6px 12px; border-radius: 9px; background: white;
+      cursor: pointer; transition: all .15s;
+    }
+    .back-btn:hover { border-color: var(--gray-400); color: var(--gray-700); }
+    .header-title { font-size: 16px; font-weight: 700; }
+    .header-sub { font-size: 12px; color: var(--gray-400); font-weight: 500; }
+    .header-right { display: flex; gap: 8px; }
+
+    /* Main */
+    main { max-width: 680px; margin: 0 auto; padding: 24px 16px 80px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* Cards */
+    .card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--r);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title-sm { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      padding: 10px 16px; border-radius: 10px; cursor: pointer;
+      text-decoration: none; border: none; transition: all .15s; line-height: 1;
+    }
+    .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 8px; }
+    .btn-lg { padding: 14px 20px; font-size: 15px; border-radius: 11px; }
+    .btn-primary { background: var(--orange); color: white; }
+    .btn-primary:hover { background: var(--orange-hover); }
+    .btn-outline { background: white; color: var(--gray-700); border: 1.5px solid var(--gray-200); }
+    .btn-outline:hover { border-color: var(--gray-400); }
+    .btn-danger { background: var(--red-light); color: var(--red); border: 1.5px solid #FECACA; }
+    .btn-danger:hover { background: #FEE2E2; }
+    .btn-ghost { background: transparent; color: var(--gray-500); border: 1.5px solid var(--gray-200); }
+    .btn-ghost:hover { background: var(--gray-50); }
+    .btn-full { width: 100%; }
+    .btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+
+    /* Warmup */
+    .warmup-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .warmup-active {
+      margin-top: 12px;
+      background: var(--blue-light);
+      border: 1.5px solid #BFDBFE;
+      border-radius: 11px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .warmup-timer-display { font-size: 28px; font-weight: 900; color: var(--blue); letter-spacing: -1px; }
+    .warmup-label-sm { font-size: 11px; font-weight: 600; color: var(--blue); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Format */
+    .format-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--orange-light); color: var(--orange);
+      font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    }
+
+    /* Status info */
+    .status-info {
+      font-size: 12px; color: var(--gray-400);
+      font-family: monospace;
+      background: var(--gray-50);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-100);
+      line-height: 1.8;
+    }
+
+    /* Team names */
+    .names-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .input-group label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 5px; display: block; }
+    input[type=text] {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--gray-200); border-radius: 9px;
+      font-family: inherit; font-size: 14px; font-weight: 500; color: var(--gray-900);
+      background: white; transition: border-color .15s; outline: none;
+    }
+    input[type=text]:focus { border-color: var(--orange); }
+
+    select {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--gray-200); border-radius: 9px;
+      font-family: inherit; font-size: 14px; font-weight: 500; color: var(--gray-900);
+      background: white; outline: none; cursor: pointer;
+      transition: border-color .15s; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    select:focus { border-color: var(--orange); }
+
+    /* Score controls */
+    .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .score-team {
+      background: var(--gray-50);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+    .score-team.a { border-color: var(--orange); background: var(--orange-light); }
+    .score-team-name { font-size: 12px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .score-team.a .score-team-name { color: var(--orange); }
+    .score-num { font-size: 52px; font-weight: 900; letter-spacing: -2px; line-height: 1; margin: 8px 0; color: var(--gray-900); }
+    .score-unit { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    .score-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+    /* Points display */
+    .pts-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      background: var(--gray-50);
+      border-radius: 9px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+    .pts-val-ctrl { font-size: 20px; font-weight: 900; color: var(--gray-900); }
+    .pts-val-ctrl.ad { color: var(--orange); }
+    .pts-sep { font-size: 16px; color: var(--gray-300); }
+
+    /* Format selector */
+    .format-list { display: flex; flex-direction: column; gap: 8px; }
+    .format-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .format-option:hover { border-color: var(--gray-300); background: var(--gray-50); }
+    .format-option.selected { border-color: var(--orange); background: var(--orange-light); }
+    .format-option input[type=radio] { display: none; }
+    .format-radio {
+      width: 18px; height: 18px; min-width: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--gray-300);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .format-option.selected .format-radio { border-color: var(--orange); background: var(--orange); }
+    .format-option.selected .format-radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: white; }
+    .format-texts { flex: 1; }
+    .format-name { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+    .format-option.selected .format-name { color: var(--orange); }
+    .format-sub { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
+
+    /* Sets display */
+    .sets-row { display: flex; gap: 6px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+    .set-pill {
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--gray-100); color: var(--gray-500);
+    }
+
+    /* Separator */
+    .separator { height: 1px; background: var(--gray-200); margin: 4px 0; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--gray-900); color: white;
+      font-size: 13px; font-weight: 600;
+      padding: 10px 20px; border-radius: 999px;
+      opacity: 0; transition: opacity .2s;
+      pointer-events: none; white-space: nowrap; z-index: 999;
+    }
+    #toast.show { opacity: 1; }
+
+    /* Court selector */
+    #court-selector { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 32px 20px; }
+    .selector-title { font-size: 24px; font-weight: 900; letter-spacing: -.5px; margin-bottom: 6px; }
+    .selector-sub { font-size: 14px; color: var(--gray-500); margin-bottom: 32px; }
+    .selector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 400px; }
+    .selector-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; padding: 32px 16px;
+      background: white; border: 1.5px solid var(--gray-200);
+      border-radius: var(--r); cursor: pointer; text-decoration: none;
+      font-size: 18px; font-weight: 800; color: var(--gray-900);
+      transition: all .15s; box-shadow: var(--shadow);
+    }
+    .selector-card:hover { border-color: var(--orange); background: var(--orange-light); color: var(--orange); }
+    .selector-icon { font-size: 28px; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 480px) {
+      .warmup-presets { grid-template-columns: repeat(2, 1fr); }
+      .names-grid { grid-template-columns: 1fr; }
+      .score-num { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+
+  <!-- Control panel (shown when sala param present) -->
+  <div id="control-panel" class="hidden">
+    <header>
+      <div class="header-left">
+        <a href="index.html" class="back-btn">← Voltar</a>
+        <div>
+          <div class="header-title">Painel de Controle</div>
+          <div class="header-sub" id="header-sub">Sala —</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <a id="view-link" href="#" target="_blank" class="btn btn-sm btn-outline">Ver Placar ↗</a>
+      </div>
+    </header>
+
+    <main>
+
+      <!-- Format selector -->
+      <div class="card" id="format-card">
+        <div class="card-title">Formato do Jogo</div>
+        <div class="format-list" id="format-list"></div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary btn-full" onclick="doApplyFormat()">Confirmar Formato</button>
+        </div>
+      </div>
+
+      <!-- Warmup -->
+      <div class="card">
+        <div class="card-title">⏱ Aquecimento</div>
+        <div class="warmup-presets">
+          <button class="btn btn-outline btn-sm" onclick="doWarmup(15)">15s</button>
+          <button class="btn btn-outline btn-sm" onclick="doWarmup(180)">3 min</button>
+          <button class="btn btn-outline btn-sm" onclick="doWarmup(300)">5 min</button>
+          <button class="btn btn-outline btn-sm" onclick="doWarmup(600)">10 min</button>
+        </div>
+        <div id="warmup-active" class="warmup-active hidden">
+          <div>
+            <div class="warmup-label-sm">Aquecimento</div>
+            <div class="warmup-timer-display" id="warmup-ctrl-timer">--:--</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="doBeginMatch()">Iniciar Jogo →</button>
+        </div>
+      </div>
+
+      <!-- Fase e Categoria -->
+      <div class="card">
+        <div class="card-title">Informações da Partida</div>
+        <div class="names-grid">
+          <div class="input-group">
+            <label>Fase do Jogo</label>
+            <select id="fase-select">
+              <option value="">Selecione</option>
+              <option value="grupos">Chave de Grupos</option>
+              <option value="oitavas">Oitavas de Final</option>
+              <option value="quartas">Quartas de Final</option>
+              <option value="semifinal">Semifinal</option>
+              <option value="final">Final</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Categoria</label>
+            <select id="categoria-select">
+              <option value="">Selecione</option>
+              <option value="open">Open</option>
+              <option value="1cat">1ª Categoria</option>
+              <option value="2cat">2ª Categoria</option>
+              <option value="3cat">3ª Categoria</option>
+              <option value="4cat">4ª Categoria</option>
+              <option value="5cat">5ª Categoria</option>
+              <option value="6cat">6ª Categoria</option>
+              <option value="7cat">7ª Categoria</option>
+              <option value="mistaA">Mista A</option>
+              <option value="mistaB">Mista B</option>
+              <option value="mistaC">Mista C</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-full" onclick="doUpdateInfo()">Salvar Informações</button>
+      </div>
+
+      <!-- Athlete names -->
+      <div class="card">
+        <div class="card-title">Nome dos Atletas</div>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:14px">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--orange);margin-bottom:8px">Dupla A</div>
+            <div class="names-grid">
+              <div class="input-group">
+                <label>Atleta 1</label>
+                <input type="text" id="name-a1" placeholder="Nome">
+              </div>
+              <div class="input-group">
+                <label>Atleta 2</label>
+                <input type="text" id="name-a2" placeholder="Nome">
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--orange);margin-bottom:8px">Dupla B</div>
+            <div class="names-grid">
+              <div class="input-group">
+                <label>Atleta 1</label>
+                <input type="text" id="name-b1" placeholder="Nome">
+              </div>
+              <div class="input-group">
+                <label>Atleta 2</label>
+                <input type="text" id="name-b2" placeholder="Nome">
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-full" onclick="doUpdateNames()">Atualizar Nomes</button>
+      </div>
+
+      <!-- Score controls -->
+      <div class="card" id="score-card">
+        <div class="card-title-sm" id="score-title">Placar</div>
+        <div class="score-grid">
+          <div class="score-team a">
+            <div class="score-team-name" id="ctrl-name-a">Time A</div>
+            <div class="score-num" id="ctrl-score-a">0</div>
+            <div class="score-unit" id="ctrl-unit-a">Games</div>
+            <div class="score-btns">
+              <button class="btn btn-primary btn-sm" onclick="doScore('a')">+ Ponto</button>
+              <button class="btn btn-danger btn-sm" onclick="doRemove('a')">−</button>
+            </div>
+            <div class="sets-row hidden" id="ctrl-sets-a"></div>
+          </div>
+          <div class="score-team">
+            <div class="score-team-name" id="ctrl-name-b">Time B</div>
+            <div class="score-num" id="ctrl-score-b">0</div>
+            <div class="score-unit" id="ctrl-unit-b">Games</div>
+            <div class="score-btns">
+              <button class="btn btn-primary btn-sm" onclick="doScore('b')">+ Ponto</button>
+              <button class="btn btn-danger btn-sm" onclick="doRemove('b')">−</button>
+            </div>
+            <div class="sets-row hidden" id="ctrl-sets-b"></div>
+          </div>
+        </div>
+        <!-- Points display for full formats -->
+        <div id="pts-display" class="pts-display hidden">
+          <span id="ctrl-pts-a" class="pts-val-ctrl">0</span>
+          <span class="pts-sep">|</span>
+          <span id="ctrl-pts-b" class="pts-val-ctrl">0</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="card">
+        <div class="card-title">Controle da Partida</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-ghost btn-full" id="undo-btn" onclick="doUndo()">↩ Desfazer Última Ação</button>
+          <button class="btn btn-danger btn-full" onclick="doReset()">↺ Reset Partida</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const params = new URLSearchParams(location.search);
+    const sala = params.get('sala');
+
+    let state = null;
+    let warmupTick = null;
+    let saving = false;
+
+    if (!sala) {
+      location.href = 'index.html';
+    } else {
+      document.getElementById('control-panel').classList.remove('hidden');
+      document.getElementById('header-sub').textContent = 'Sala ' + sala;
+      document.getElementById('view-link').href = 'display.html?sala=' + sala;
+      init();
+    }
+
+    async function init() {
+      buildFormatList();
+      const { data } = await sb.from('placar').select('state').eq('sala_id', sala).single();
+      state = data?.state && Object.keys(data.state).length ? data.state : newState(null);
+      syncFromState();
+
+      sb.channel('ctrl-' + sala)
+        .on('postgres_changes', {
+          event: 'UPDATE', schema: 'public', table: 'placar',
+          filter: 'sala_id=eq.' + sala
+        }, p => {
+          if (!saving) { state = p.new.state; syncFromState(); }
+        })
+        .subscribe();
+    }
+
+    async function save(s) {
+      saving = true;
+      state = s;
+      await sb.from('placar').update({ state: s, updated_at: new Date().toISOString() }).eq('sala_id', sala);
+      saving = false;
+      syncFromState();
+    }
+
+    function syncFromState() {
+      if (!state) return;
+      const s = state;
+      const fmt = s.format ? FORMATS[s.format] : null;
+
+      // Show/hide format card
+      document.getElementById('format-card').classList.toggle('hidden', s.phase !== 'idle');
+
+      // Athlete name inputs
+      // Fase e categoria
+      document.getElementById('fase-select').value = s.fase || '';
+      document.getElementById('categoria-select').value = s.categoria || '';
+
+      document.getElementById('name-a1').value = s.player_a1 || '';
+      document.getElementById('name-a2').value = s.player_a2 || '';
+      document.getElementById('name-b1').value = s.player_b1 || '';
+      document.getElementById('name-b2').value = s.player_b2 || '';
+
+      // Score card
+      const ctrlNameA = document.getElementById('ctrl-name-a');
+      const ctrlNameB = document.getElementById('ctrl-name-b');
+      ctrlNameA.textContent = s.team_a || 'Time A';
+      ctrlNameB.textContent = s.team_b || 'Time B';
+
+      let numA, numB, unit;
+      if (s.in_tb) {
+        numA = s.tb_a; numB = s.tb_b; unit = 'Tie-Break';
+      } else if (fmt?.type === 'best3') {
+        numA = s.games_a; numB = s.games_b;
+        unit = 'Set ' + ((s.completed_sets?.length || 0) + 1);
+      } else {
+        numA = s.games_a; numB = s.games_b; unit = 'Games';
+      }
+
+      document.getElementById('ctrl-score-a').textContent = numA || 0;
+      document.getElementById('ctrl-score-b').textContent = numB || 0;
+      document.getElementById('ctrl-unit-a').textContent = unit || 'Games';
+      document.getElementById('ctrl-unit-b').textContent = unit || 'Games';
+
+      // Score title
+      if (s.winner) {
+        const winnerName = s.winner === 'a' ? (s.team_a || 'Time A') : (s.team_b || 'Time B');
+        document.getElementById('score-title').textContent = '🏆 ' + winnerName + ' venceu!';
+      } else {
+        document.getElementById('score-title').textContent = 'Placar';
+      }
+
+      // + Ponto label
+      document.querySelectorAll('#score-card .score-btns .btn-primary').forEach(btn => {
+        btn.textContent = (fmt?.points && !s.in_tb) ? '+ Ponto' : '+ Game';
+      });
+
+      // Points display
+      const ptsEl = document.getElementById('pts-display');
+      if (fmt?.points && s.phase === 'playing' && !s.in_tb) {
+        ptsEl.classList.remove('hidden');
+        const pd = ptsDisplay(s);
+        const pa = document.getElementById('ctrl-pts-a');
+        const pb = document.getElementById('ctrl-pts-b');
+        pa.textContent = pd.a;
+        pb.textContent = pd.b;
+        pa.className = 'pts-val-ctrl' + (pd.a === 'AD' ? ' ad' : '');
+        pb.className = 'pts-val-ctrl' + (pd.b === 'AD' ? ' ad' : '');
+      } else {
+        ptsEl.classList.add('hidden');
+      }
+
+      // Sets won
+      if (fmt?.type === 'best3') {
+        renderSetsCtrl('a', s.sets_a); renderSetsCtrl('b', s.sets_b);
+      } else {
+        document.getElementById('ctrl-sets-a').classList.add('hidden');
+        document.getElementById('ctrl-sets-b').classList.add('hidden');
+      }
+
+      // Warmup
+      clearInterval(warmupTick);
+      const wActive = document.getElementById('warmup-active');
+      if (s.phase === 'warmup' && s.warmup_end) {
+        wActive.classList.remove('hidden');
+        const tick = () => {
+          const left = Math.max(0, new Date(s.warmup_end) - Date.now());
+          const m = Math.floor(left / 60000);
+          const sec = Math.floor((left % 60000) / 1000);
+          document.getElementById('warmup-ctrl-timer').textContent =
+            String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+          if (left === 0) clearInterval(warmupTick);
+        };
+        tick(); warmupTick = setInterval(tick, 500);
+      } else {
+        wActive.classList.add('hidden');
+      }
+
+      // Undo btn
+      document.getElementById('undo-btn').disabled = !s.history?.length;
+    }
+
+    function renderSetsCtrl(team, won) {
+      const el = document.getElementById('ctrl-sets-' + team);
+      el.classList.remove('hidden');
+      el.innerHTML = '<span style="font-size:11px;color:var(--gray-400);margin-right:4px">Sets:</span>' +
+        [0,1].map(i => `<span class="set-pill" style="${i < won ? 'background:var(--orange-light);color:var(--orange)' : ''}">${i < won ? '●' : '○'}</span>`).join('');
+    }
+
+    function buildFormatList() {
+      const list = document.getElementById('format-list');
+      list.innerHTML = Object.entries(FORMATS).map(([key, f]) => `
+        <label class="format-option" data-key="${key}">
+          <input type="radio" name="fmt" value="${key}">
+          <div class="format-radio"></div>
+          <div class="format-texts">
+            <div class="format-name">${f.label}</div>
+            <div class="format-sub">${f.sub}</div>
+          </div>
+        </label>
+      `).join('');
+
+      list.querySelectorAll('.format-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          list.querySelectorAll('.format-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          opt.querySelector('input').checked = true;
+        });
+      });
+
+      // Pre-select first
+      list.querySelector('.format-option')?.click();
+    }
+
+    function phaseLabel(p) {
+      return { idle: 'Aguardando', warmup: 'Aquecimento', playing: 'Em jogo', finished: 'Finalizado' }[p] || p;
+    }
+
+    // Actions
+    function doWarmup(secs) {
+      if (!state.format) { toast('Escolha um formato antes'); return; }
+      save(startWarmup(state, secs));
+    }
+
+    function doBeginMatch() { save(beginMatch(state)); }
+
+    function doApplyFormat() {
+      const sel = document.querySelector('#format-list input:checked');
+      if (!sel) { toast('Escolha um formato'); return; }
+      let s = setFormat(state, sel.value);
+      if (!s.phase || s.phase === 'idle') s.phase = 'idle';
+      save(s);
+      toast('Formato definido');
+    }
+
+    function doUpdateInfo() {
+      const fase = document.getElementById('fase-select').value;
+      const categoria = document.getElementById('categoria-select').value;
+      save(Object.assign({}, state, { fase, categoria }));
+      toast('Informações salvas');
+    }
+
+    function doUpdateNames() {
+      const a1 = document.getElementById('name-a1').value.trim();
+      const a2 = document.getElementById('name-a2').value.trim();
+      const b1 = document.getElementById('name-b1').value.trim();
+      const b2 = document.getElementById('name-b2').value.trim();
+      const teamA = [a1, a2].filter(Boolean).join(' / ') || 'Dupla A';
+      const teamB = [b1, b2].filter(Boolean).join(' / ') || 'Dupla B';
+      const s = Object.assign({}, state, {
+        player_a1: a1, player_a2: a2,
+        player_b1: b1, player_b2: b2,
+        team_a: teamA, team_b: teamB,
+      });
+      save(s);
+      toast('Nomes atualizados');
+    }
+
+    function doScore(team) {
+      if (!state.format) { toast('Defina o formato primeiro'); return; }
+      if (state.phase === 'idle') {
+        const s = Object.assign({}, state, { phase: 'playing' });
+        save(score(s, team));
+        return;
+      }
+      save(score(state, team));
+    }
+
+    function doRemove(team) {
+      if (!state.format) return;
+      const other = team === 'a' ? 'b' : 'a';
+      // Simple: decrement current games/tb (not full undo logic, just -1)
+      const s = Object.assign({}, cloneState(state));
+      if (s.in_tb) {
+        s['tb_' + team] = Math.max(0, (s['tb_' + team] || 0) - 1);
+      } else {
+        s['games_' + team] = Math.max(0, (s['games_' + team] || 0) - 1);
+      }
+      save(s);
+    }
+
+    function doUndo() { save(undo(state)); }
+
+    function doReset() {
+      if (!confirm('Resetar a partida?')) return;
+      save(resetMatch(state));
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2000);
+    }
+  </script>
+</body>
+</html>

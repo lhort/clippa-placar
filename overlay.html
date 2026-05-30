@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clippa — Overlay</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="game.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: transparent; font-family: 'Inter', system-ui, sans-serif; }
+
+    /* Overlay container — top-left by default */
+    .overlay {
+      display: inline-flex;
+      flex-direction: column;
+      min-width: 220px;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 14px;
+    }
+
+    /* Team row */
+    .team-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(10,10,10,.88);
+      backdrop-filter: blur(8px);
+    }
+    .team-row + .team-row { border-top: 1px solid rgba(255,255,255,.06); }
+
+    .team-color {
+      width: 4px;
+      align-self: stretch;
+      background: rgba(255,255,255,.15);
+      flex-shrink: 0;
+    }
+    .team-row.leader .team-color { background: #F97316; }
+
+    .team-info {
+      flex: 1;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .team-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,255,255,.55);
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+    .team-row.leader .team-name { color: #fff; }
+
+    .team-score-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .label-mini {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.2);
+    }
+
+    .score-big {
+      font-size: 24px;
+      font-weight: 900;
+      color: rgba(255,255,255,.3);
+      line-height: 1;
+      letter-spacing: -1px;
+      min-width: 28px;
+      text-align: right;
+    }
+    .team-row.leader .score-big { color: #F97316; }
+
+    /* Points (full format) */
+    .pts-mini {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,.25);
+      min-width: 28px;
+      text-align: right;
+    }
+    .pts-mini.active { color: rgba(255,255,255,.6); }
+    .pts-mini.ad { color: #F97316; }
+
+    /* Completed sets */
+    .sets-mini { display: flex; flex-direction: column; gap: 1px; }
+    .set-mini {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,.2);
+      text-align: center;
+    }
+
+    /* Footer bar */
+    .overlay-footer {
+      background: rgba(249,115,22,.9);
+      padding: 4px 10px 4px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-logo {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: white;
+    }
+    .footer-live {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,.7);
+    }
+    .live-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: white;
+      animation: blink 2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* Warmup */
+    .warmup-row {
+      background: rgba(59,130,246,.9);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .warmup-row-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: rgba(255,255,255,.7); text-transform: uppercase; }
+    .warmup-row-time { font-size: 20px; font-weight: 900; color: white; letter-spacing: -1px; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="overlay" id="overlay">
+
+    <!-- Warmup row -->
+    <div class="warmup-row hidden" id="warmup-row">
+      <span class="warmup-row-label">Aquecimento</span>
+      <span class="warmup-row-time" id="warmup-time">--:--</span>
+    </div>
+
+    <!-- Team A -->
+    <div class="team-row" id="row-a">
+      <div class="team-color"></div>
+      <div class="team-info">
+        <span class="team-name" id="ov-name-a">Time A</span>
+        <div class="team-score-wrap">
+          <div class="sets-mini hidden" id="ov-sets-a"></div>
+          <div>
+            <div class="label-mini" id="ov-label">GAMES</div>
+            <div class="score-big" id="ov-score-a">0</div>
+          </div>
+          <div class="pts-mini hidden" id="ov-pts-a">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team B -->
+    <div class="team-row" id="row-b">
+      <div class="team-color"></div>
+      <div class="team-info">
+        <span class="team-name" id="ov-name-b">Time B</span>
+        <div class="team-score-wrap">
+          <div class="sets-mini hidden" id="ov-sets-b"></div>
+          <div>
+            <div class="label-mini">&nbsp;</div>
+            <div class="score-big" id="ov-score-b">0</div>
+          </div>
+          <div class="pts-mini hidden" id="ov-pts-b">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="overlay-footer">
+      <span class="footer-logo">CLIPPA</span>
+      <div class="footer-live"><div class="live-dot"></div>AO VIVO</div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sala = new URLSearchParams(location.search).get('sala') || 1;
+    let warmupTick = null;
+
+    sb.channel('overlay-' + sala)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'placar',
+        filter: 'sala_id=eq.' + sala
+      }, p => render(p.new.state))
+      .subscribe();
+
+    async function load() {
+      const { data } = await sb.from('placar').select('state').eq('sala_id', sala).single();
+      render(data?.state || null);
+    }
+
+    function render(s) {
+      if (!s || !s.format) return;
+      const fmt = FORMATS[s.format];
+
+      document.getElementById('ov-name-a').textContent = s.team_a || 'Time A';
+      document.getElementById('ov-name-b').textContent = s.team_b || 'Time B';
+
+      // Score
+      let sA, sB, label;
+      if (s.in_tb) { sA = s.tb_a; sB = s.tb_b; label = 'TB'; }
+      else if (fmt.type === 'best3') { sA = s.games_a; sB = s.games_b; label = 'SET ' + ((s.completed_sets?.length || 0) + 1); }
+      else { sA = s.games_a; sB = s.games_b; label = 'GAMES'; }
+
+      document.getElementById('ov-score-a').textContent = sA;
+      document.getElementById('ov-score-b').textContent = sB;
+      document.getElementById('ov-label').textContent = label;
+
+      // Leader
+      document.getElementById('row-a').classList.toggle('leader', sA > sB);
+      document.getElementById('row-b').classList.toggle('leader', sB > sA);
+
+      // Completed sets
+      ['a','b'].forEach(t => {
+        const el = document.getElementById('ov-sets-' + t);
+        if (fmt.type === 'best3' && s.completed_sets?.length) {
+          el.classList.remove('hidden');
+          el.innerHTML = s.completed_sets.map(cs => `<div class="set-mini">${cs[t]}</div>`).join('');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      // Points
+      ['a','b'].forEach(t => {
+        const el = document.getElementById('ov-pts-' + t);
+        if (fmt.points && s.phase === 'playing' && !s.in_tb) {
+          el.classList.remove('hidden');
+          const pd = ptsDisplay(s);
+          const val = pd[t];
+          el.textContent = val;
+          el.className = 'pts-mini' + (val !== '0' ? ' active' : '') + (val === 'AD' ? ' ad' : '');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      // Warmup
+      clearInterval(warmupTick);
+      const warmupRow = document.getElementById('warmup-row');
+      if (s.phase === 'warmup' && s.warmup_end) {
+        warmupRow.classList.remove('hidden');
+        const tick = () => {
+          const left = Math.max(0, new Date(s.warmup_end) - Date.now());
+          const m = Math.floor(left / 60000);
+          const sec = Math.floor((left % 60000) / 1000);
+          document.getElementById('warmup-time').textContent =
+            String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+          if (left === 0) clearInterval(warmupTick);
+        };
+        tick(); warmupTick = setInterval(tick, 500);
+      } else {
+        warmupRow.classList.add('hidden');
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

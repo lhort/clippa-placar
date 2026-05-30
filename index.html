@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clippa — Sistema de Placar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="game.js"></script>
+  <style>
+    :root {
+      --orange: #F97316;
+      --orange-light: #FFF7ED;
+      --black: #0F0F0F;
+      --white: #fff;
+      --gray-50: #F9FAFB;
+      --gray-100: #F3F4F6;
+      --gray-200: #E5E7EB;
+      --gray-400: #9CA3AF;
+      --gray-500: #6B7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --r: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+    nav {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { font-weight: 900; font-size: 17px; letter-spacing: -.3px; }
+    .logo-dot { color: var(--orange); }
+
+    main { max-width: 1080px; margin: 0 auto; padding: 48px 20px 80px; }
+
+    .page-title { font-size: clamp(26px, 4vw, 36px); font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; }
+    .page-sub { font-size: 15px; color: var(--gray-500); margin-bottom: 40px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--orange);
+      margin-bottom: 16px;
+    }
+
+    /* Court cards */
+    .courts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+
+    .court-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--r);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .court-card:hover { box-shadow: var(--shadow-md); }
+    .court-card.active { border-color: var(--orange); }
+
+    .court-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .court-name { font-size: 17px; font-weight: 700; }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-idle { background: var(--gray-100); color: var(--gray-500); }
+    .badge-warmup { background: #EFF6FF; color: #2563EB; }
+    .badge-playing { background: #FEF3C7; color: #B45309; }
+    .badge-finished { background: #D1FAE5; color: #065F46; }
+
+    .court-score {
+      margin-bottom: 18px;
+    }
+    .court-team-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+    .court-team-name { font-weight: 600; color: var(--gray-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+    .court-team-pts { font-size: 20px; font-weight: 800; color: var(--orange); line-height: 1; }
+    .court-team-pts.b { color: var(--gray-900); }
+    .court-empty { font-size: 13px; color: var(--gray-400); padding: 12px 0 18px; }
+
+    .court-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 14px;
+      border-radius: 9px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .15s;
+      border: none;
+      line-height: 1;
+    }
+    .btn-primary { background: var(--orange); color: white; }
+    .btn-primary:hover { background: #EA6500; }
+    .btn-outline { background: white; color: var(--gray-700); border: 1.5px solid var(--gray-200); }
+    .btn-outline:hover { border-color: var(--gray-400); }
+    .btn-full { width: 100%; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    @media (max-width: 600px) {
+      main { padding: 32px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">CLIPPA <span class="logo-dot">●</span></div>
+  </nav>
+
+  <main>
+    <h1 class="page-title">Sistema de Placar</h1>
+    <p class="page-sub">Gerencie as partidas de padel em tempo real</p>
+
+    <div class="section-label">Quadras</div>
+    <div class="courts-grid" id="courts-grid"></div>
+
+  </main>
+
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let states = {};
+
+    async function load() {
+      renderAll(); // renderiza imediatamente com estado vazio
+      try {
+        const { data } = await sb.from('placar').select('*').order('sala_id');
+        (data || []).forEach(r => { states[r.sala_id] = r.state; });
+        renderAll();
+      } catch (e) {
+        console.warn('Supabase indisponível:', e);
+      }
+    }
+
+    function renderAll() {
+      const grid = document.getElementById('courts-grid');
+      grid.innerHTML = [1,2,3,4].map(sala => {
+        const s = states[sala];
+        const phase = s?.phase || 'idle';
+        const fmt = s?.format ? FORMATS[s.format] : null;
+
+        const badges = {
+          idle: ['badge-idle', 'Disponível'],
+          warmup: ['badge-warmup', 'Aquecimento'],
+          playing: ['badge-playing', 'Em jogo'],
+          finished: ['badge-finished', 'Finalizado'],
+        };
+        const [badgeClass, badgeText] = badges[phase] || badges.idle;
+
+        let scoreHtml = `<div class="court-empty">Quadra disponível</div>`;
+        if (s && s.format && s.phase !== 'idle') {
+          scoreHtml = `
+            <div class="court-score">
+              <div class="court-team-row">
+                <span class="court-team-name">${esc(s.team_a)}</span>
+                <span class="court-team-pts">${s.games_a}</span>
+              </div>
+              <div class="court-team-row">
+                <span class="court-team-name">${esc(s.team_b)}</span>
+                <span class="court-team-pts b">${s.games_b}</span>
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="court-card ${phase === 'playing' ? 'active' : ''}">
+            <div class="court-card-top">
+              <span class="court-name">Quadra ${sala}</span>
+              <span class="badge ${badgeClass}">${badgeText}</span>
+            </div>
+            ${scoreHtml}
+            <div class="court-actions">
+              <a href="display.html?sala=${sala}" class="btn btn-outline" target="_blank">Ver Placar</a>
+              <a href="control.html?sala=${sala}" class="btn btn-primary">Controlar</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Realtime
+    sb.channel('placar-index')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'placar' }, p => {
+        states[p.new.sala_id] = p.new.state;
+        renderAll();
+      })
+      .subscribe();
+
+    load();
+  </script>
+</body>
+</html>

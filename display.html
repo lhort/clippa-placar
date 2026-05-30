@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clippa — Placar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="game.js"></script>
+  <style>
+    :root { --orange: #F97316; --bg: #0A0A0A; --border: #1C1C1C; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: var(--bg); font-family: 'Inter', system-ui, sans-serif; color: #fff; overflow: hidden; }
+
+    /* ── LAYOUTS ── */
+    .field { display: grid; height: 100vh; }
+    .field.single-games   { grid-template-columns: 2fr 1fr; }
+    .field.single-full    { grid-template-columns: 2fr 0.42fr 0.65fr; }
+    .field.single-tb      { grid-template-columns: 2fr 0.65fr 0.65fr; }
+    .field.single-full-tb { grid-template-columns: 2fr 0.42fr 0.55fr 0.55fr; }
+    .field.best3          { grid-template-columns: 2fr 0.7fr 0.7fr 0.7fr; }
+    .field.best3-full     { grid-template-columns: 2fr 0.9fr 0.7fr 0.7fr; }
+
+    /* ── NOMES ── */
+    .teams { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+
+    .info-bar {
+      padding: 10px 6vw 10px calc(6vw + 7px + 2vw);
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+      min-height: 38px;
+    }
+    .info-bar span {
+      font-size: clamp(11px, 1.1vw, 15px); font-weight: 700;
+      letter-spacing: .18em; text-transform: uppercase;
+      color: rgba(249,115,22,.7);
+    }
+    .info-bar .sep { width: 3px; height: 3px; border-radius: 50%; background: rgba(249,115,22,.3); flex-shrink: 0; }
+
+    .team-panel { flex: 1; display: flex; align-items: center; padding: 0 6vw; gap: 2vw; }
+    .team-panel + .team-panel { border-top: 1px solid var(--border); }
+    .team-bar { width: 5px; align-self: stretch; margin: 8% 0; border-radius: 4px; background: var(--orange); flex-shrink: 0; }
+    .team-panel:last-child .team-bar { background: rgba(255,255,255,.12); }
+    .team-names { display: flex; flex-direction: column; gap: .3vw; }
+    .player { font-size: clamp(22px, 3.2vw, 52px); font-weight: 900; letter-spacing: -1px; line-height: 1; text-transform: uppercase; color: #fff; }
+
+    /* ── COLUNAS GENÉRICAS ── */
+    .col { display: flex; flex-direction: column; border-left: 1px solid var(--border); }
+    .col-head { padding: 1.4vh 0; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
+    .col-label { font-size: clamp(9px, .9vw, 13px); font-weight: 900; letter-spacing: .3em; text-transform: uppercase; color: var(--orange); }
+    .col-label.white { color: #fff; }
+    .col-label.dim { color: rgba(255,255,255,.25); }
+
+    .cell { flex: 1; display: flex; align-items: center; justify-content: center; }
+    .cell + .cell { border-top: 1px solid var(--border); }
+
+    /* ── NÚMEROS ── */
+    .num { font-weight: 900; letter-spacing: -2px; line-height: 1; }
+    .num.xl  { font-size: clamp(72px, 14vw, 200px); }
+    .num.lg  { font-size: clamp(52px,  9vw, 140px); }
+    .num.md  { font-size: clamp(36px,  6vw,  90px); }
+    .num.sm  { font-size: clamp(26px,  4vw,  64px); }
+    .num.xs  { font-size: clamp(16px, 2.2vw, 32px); }
+    .num.dim { color: rgba(255,255,255,.08); }
+    .num.a   { color: var(--orange); }
+    .num.b   { color: #fff; }
+    .num.a-dim { color: rgba(249,115,22,.35); }
+
+    /* Inline: pontos à esquerda + games à direita */
+    .cell.inline { flex-direction: row; justify-content: center; gap: 1vw; }
+    .cell.inline .pts-inline { align-self: center; margin-bottom: .4vw; }
+
+    /* TB inline: games pequeno à esq, TB grande à dir */
+    .cell.tb-inline { flex-direction: row; justify-content: center; gap: 1vw; }
+    .cell.tb-inline .games-lock { align-self: center; margin-bottom: .5vw; }
+
+    /* ── OVERLAYS ── */
+    .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+
+    #idle { background: var(--bg); }
+    .idle-logo { font-size: clamp(32px, 6vw, 64px); font-weight: 900; letter-spacing: 6px; color: rgba(255,255,255,.05); }
+    .idle-sub  { font-size: 14px; color: rgba(255,255,255,.2); letter-spacing: 1px; }
+
+    #warmup { background: rgba(10,10,10,.96); }
+    .warmup-lbl  { font-size: 12px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,.3); }
+    .warmup-time { font-size: clamp(80px, 18vw, 200px); font-weight: 900; letter-spacing: -6px; color: var(--orange); line-height: 1; }
+
+    #winner { background: rgba(10,10,10,.97); }
+    .winner-lbl   { font-size: 12px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,.3); }
+    .winner-team  { font-size: clamp(36px, 7vw, 96px); font-weight: 900; color: var(--orange); letter-spacing: -2px; text-align: center; }
+    .winner-score { font-size: 16px; color: rgba(255,255,255,.3); font-weight: 600; letter-spacing: 2px; }
+
+    .hidden { display: none !important; }
+
+    .back-btn {
+      position: fixed; top: 12px; left: 14px; z-index: 99;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,.25);
+      text-decoration: none; padding: 5px 10px; border-radius: 7px;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+      transition: all .15s;
+    }
+    .back-btn:hover { color: white; background: rgba(255,255,255,.1); }
+  </style>
+</head>
+<body>
+
+  <a href="index.html" class="back-btn">← Voltar</a>
+
+  <div id="idle" class="overlay">
+    <div class="idle-logo">CLIPPA</div>
+    <div class="idle-sub">Aguardando configuração da partida</div>
+  </div>
+
+  <div id="main" class="hidden"></div>
+
+  <div id="warmup" class="overlay hidden">
+    <div class="warmup-lbl">Aquecimento</div>
+    <div class="warmup-time" id="warmup-time">--:--</div>
+  </div>
+
+  <div id="winner" class="overlay hidden">
+    <div class="winner-lbl">Vencedor</div>
+    <div class="winner-team" id="winner-team">—</div>
+    <div class="winner-score" id="winner-score"></div>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sala = new URLSearchParams(location.search).get('sala') || 1;
+
+    let state = null;
+    let warmupTick = null;
+
+    // ── REALTIME ──
+    sb.channel('display-' + sala)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'placar', filter: 'sala_id=eq.' + sala }, p => {
+        state = p.new.state; render(state);
+      }).subscribe();
+
+    sb.channel('buttons-' + sala)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'button_events', filter: 'sala_id=eq.' + sala }, async p => {
+        if (!state) return;
+        const ev = p.new.event;
+        let s = state;
+        if (ev === 'score_a') s = score(state, 'a');
+        else if (ev === 'score_b') s = score(state, 'b');
+        else if (ev === 'undo') s = undo(state);
+        else if (ev === 'reset') s = resetMatch(state);
+        if (s !== state) {
+          state = s;
+          await sb.from('placar').update({ state: s, updated_at: new Date().toISOString() }).eq('sala_id', sala);
+          render(state);
+        }
+      }).subscribe();
+
+    async function load() {
+      const { data } = await sb.from('placar').select('state').eq('sala_id', sala).single();
+      state = data?.state || null;
+      render(state);
+    }
+
+    // ── RENDER ──
+    function render(s) {
+      const idle    = document.getElementById('idle');
+      const main    = document.getElementById('main');
+      const warmup  = document.getElementById('warmup');
+      const winnerEl = document.getElementById('winner');
+      clearInterval(warmupTick);
+
+      if (!s || !s.format || s.phase === 'idle') {
+        idle.classList.remove('hidden');
+        main.classList.add('hidden');
+        warmup.classList.add('hidden');
+        winnerEl.classList.add('hidden');
+        return;
+      }
+
+      idle.classList.add('hidden');
+      main.classList.remove('hidden');
+      winnerEl.classList.add('hidden');
+
+      if (s.phase === 'warmup' && s.warmup_end) {
+        warmup.classList.remove('hidden');
+        const tick = () => {
+          const left = Math.max(0, new Date(s.warmup_end) - Date.now());
+          const m = Math.floor(left/60000), sec = Math.floor((left%60000)/1000);
+          document.getElementById('warmup-time').textContent = String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+          if (!left) clearInterval(warmupTick);
+        };
+        tick(); warmupTick = setInterval(tick, 500);
+      } else {
+        warmup.classList.add('hidden');
+      }
+
+      if (s.winner) {
+        winnerEl.classList.remove('hidden');
+        document.getElementById('winner-team').textContent = s.winner === 'a' ? (s.team_a||'Dupla A') : (s.team_b||'Dupla B');
+        document.getElementById('winner-score').textContent = buildScore(s);
+      }
+
+      const fmt = FORMATS[s.format];
+      main.innerHTML = fmt.type === 'single' ? renderSingle(s, fmt) : renderBest3(s, fmt);
+    }
+
+    function namesHTML(s) {
+      const fase = s.fase ? FASE_LABELS[s.fase] || s.fase : '';
+      const cat  = s.categoria ? CAT_LABELS[s.categoria] || s.categoria : '';
+      const info = [fase, cat].filter(Boolean);
+      const infoHTML = info.length
+        ? `<div class="info-bar">${info.map((t,i) => i===0 ? `<span>${esc(t)}</span>` : `<div class="sep"></div><span>${esc(t)}</span>`).join('')}</div>`
+        : `<div class="info-bar"></div>`;
+      return `
+        <div class="teams">
+          ${infoHTML}
+          <div class="team-panel">
+            <div class="team-bar"></div>
+            <div class="team-names">
+              <span class="player">${esc(playerName(s.team_a, 1))}</span>
+              <span class="player">${esc(playerName(s.team_a, 2))}</span>
+            </div>
+          </div>
+          <div class="team-panel">
+            <div class="team-bar"></div>
+            <div class="team-names">
+              <span class="player">${esc(playerName(s.team_b, 1))}</span>
+              <span class="player">${esc(playerName(s.team_b, 2))}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── SINGLE SET ──
+    function renderSingle(s, fmt) {
+      const inTB = s.in_tb;
+      const hasPoints = fmt.points;
+
+      // determine grid class
+      let cls = 'single-games';
+      if (hasPoints && inTB) cls = 'single-full-tb';
+      else if (hasPoints)    cls = 'single-full';
+      else if (inTB)         cls = 'single-tb';
+
+      let cols = namesHTML(s);
+
+      if (hasPoints && !inTB) {
+        const pd = ptsDisplay(s);
+        cols += `
+          <div class="col">
+            <div class="col-head"><span class="col-label">Pontos</span></div>
+            <div class="cell"><span class="num sm a">${pd.a}</span></div>
+            <div class="cell"><span class="num sm b">${pd.b}</span></div>
+          </div>`;
+      }
+
+      cols += `
+        <div class="col">
+          <div class="col-head"><span class="col-label">Games</span></div>
+          <div class="cell"><span class="num ${inTB?'md':'xl'} a">${s.games_a}</span></div>
+          <div class="cell"><span class="num ${inTB?'md':'xl'} b">${s.games_b}</span></div>
+        </div>`;
+
+      if (inTB) {
+        cols += `
+          <div class="col">
+            <div class="col-head"><span class="col-label white">Tie-Break</span></div>
+            <div class="cell tb-inline">
+              <span class="num xs a-dim games-lock">${s.games_a}</span>
+              <span class="num lg a">${s.tb_a}</span>
+            </div>
+            <div class="cell tb-inline">
+              <span class="num xs dim games-lock">${s.games_b}</span>
+              <span class="num lg b">${s.tb_b}</span>
+            </div>
+          </div>`;
+      }
+
+      if (hasPoints && inTB) {
+        const pd = ptsDisplay(s);
+        cols += `
+          <div class="col">
+            <div class="col-head"><span class="col-label">Pontos</span></div>
+            <div class="cell"><span class="num sm a">${pd.a}</span></div>
+            <div class="cell"><span class="num sm b">${pd.b}</span></div>
+          </div>`;
+      }
+
+      return `<div class="field ${cls}">${cols}</div>`;
+    }
+
+    // ── BEST OF 3 ──
+    function renderBest3(s, fmt) {
+      const hasPoints = fmt.points;
+      const cls = hasPoints ? 'best3-full' : 'best3';
+      const completedSets = s.completed_sets || [];
+      const currentSetIdx = completedSets.length; // 0, 1 or 2
+
+      let cols = namesHTML(s);
+
+      for (let i = 0; i < 3; i++) {
+        const isDone    = i < currentSetIdx;
+        const isActive  = i === currentSetIdx && !s.winner;
+        const isPending = i > currentSetIdx || (i === currentSetIdx && s.winner);
+
+        let stateClass = isDone ? 'done' : isActive ? 'active' : 'pending';
+
+        // For best3_tb formats, set 3 is always a super tiebreak
+        const isSuperTB = fmt.tb && i === 2;
+        const labelText = isSuperTB && (isActive || isDone) ? 'Super TB' : `Set ${i+1}`;
+
+        let scoreA, scoreB;
+        if (isDone) {
+          scoreA = completedSets[i].a;
+          scoreB = completedSets[i].b;
+        } else if (isActive) {
+          scoreA = isSuperTB ? s.tb_a : s.games_a;
+          scoreB = isSuperTB ? s.tb_b : s.games_b;
+        } else {
+          scoreA = '-'; scoreB = '-';
+        }
+
+        const inSetTB = isActive && s.in_tb && !isSuperTB;
+        const labelColor = isPending ? 'dim' : 'white';
+
+        let cellA, cellB;
+
+        if (isPending) {
+          cellA = `<div class="cell"><span class="num md dim">${scoreA}</span></div>`;
+          cellB = `<div class="cell"><span class="num md dim">${scoreB}</span></div>`;
+        } else if (inSetTB) {
+          cellA = `<div class="cell tb-inline"><span class="num xs a-dim games-lock">${s.games_a}</span><span class="num lg a">${s.tb_a}</span></div>`;
+          cellB = `<div class="cell tb-inline"><span class="num xs dim games-lock">${s.games_b}</span><span class="num lg b">${s.tb_b}</span></div>`;
+        } else if (hasPoints && isActive && !isSuperTB) {
+          const pd = ptsDisplay(s);
+          cellA = `<div class="cell inline"><span class="num xs a-dim pts-inline">${pd.a}</span><span class="num lg a">${scoreA}</span></div>`;
+          cellB = `<div class="cell inline"><span class="num xs dim pts-inline">${pd.b}</span><span class="num lg b">${scoreB}</span></div>`;
+        } else {
+          const sz = 'lg';
+          cellA = `<div class="cell"><span class="num ${sz} a">${scoreA}</span></div>`;
+          cellB = `<div class="cell"><span class="num ${sz} b">${scoreB}</span></div>`;
+        }
+
+        cols += `
+          <div class="col">
+            <div class="col-head"><span class="col-label ${labelColor}">${labelText}</span></div>
+            ${cellA}${cellB}
+          </div>`;
+      }
+
+      return `<div class="field ${cls}">${cols}</div>`;
+    }
+
+    // ── HELPERS ──
+    function playerName(teamName, idx) {
+      if (!teamName) return idx === 1 ? 'Atleta 1' : 'Atleta 2';
+      const parts = teamName.split('/').map(p => p.trim());
+      return parts[idx-1] || teamName;
+    }
+
+    function buildScore(s) {
+      if (!s.completed_sets?.length) return s.games_a + '–' + s.games_b;
+      return s.completed_sets.map(cs => cs.a + '–' + cs.b).join(' · ');
+    }
+
+    function esc(str) {
+      return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    const FASE_LABELS = {
+      grupos: 'Chave de Grupos', oitavas: 'Oitavas de Final',
+      quartas: 'Quartas de Final', semifinal: 'Semifinal', final: 'Final',
+    };
+    const CAT_LABELS = {
+      open: 'Open', '1cat': '1ª Categoria', '2cat': '2ª Categoria',
+      '3cat': '3ª Categoria', '4cat': '4ª Categoria', '5cat': '5ª Categoria',
+      '6cat': '6ª Categoria', '7cat': '7ª Categoria',
+      mistaA: 'Mista A', mistaB: 'Mista B', mistaC: 'Mista C',
+    };
+
+    load();
+  </script>
+</body>
+</html>
