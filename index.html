@@ -112,8 +112,7 @@
     .court-empty { font-size: 13px; color: var(--gray-400); padding: 12px 0 18px; }
     .sets-pts { display: flex; gap: 10px; align-items: center; }
     .set-num { font-size: 20px; font-weight: 800; min-width: 14px; text-align: right; line-height: 1; }
-    .set-num.past { color: var(--gray-700); }
-    .set-num.current { color: var(--orange); }
+    .set-num.a { color: var(--orange); }
     .set-num.b { color: var(--gray-900); }
     .warmup-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--gray-100); }
     .warmup-icon { font-size: 12px; }
@@ -209,8 +208,8 @@
           if (isBest3) {
             const allA = [...completed.map(cs => cs.a), s.in_tb ? s.tb_a : s.games_a];
             const allB = [...completed.map(cs => cs.b), s.in_tb ? s.tb_b : s.games_b];
-            const numsA = allA.map((v, i) => `<span class="set-num ${i < completed.length ? 'past' : 'current'}">${v}</span>`).join('');
-            const numsB = allB.map((v, i) => `<span class="set-num ${i < completed.length ? 'past' : 'current b'}">${v}</span>`).join('');
+            const numsA = allA.map(v => `<span class="set-num a">${v}</span>`).join('');
+            const numsB = allB.map(v => `<span class="set-num b">${v}</span>`).join('');
             scoreHtml = `
               <div class="court-score">
                 <div class="court-team-row">
