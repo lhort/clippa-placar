@@ -598,8 +598,8 @@
         });
       });
 
-      // Pre-select first
-      list.querySelector('.format-option')?.click();
+      // Pre-select single_9_games by default
+      (list.querySelector('.format-option[data-key="single_9_games"]') || list.querySelector('.format-option'))?.click();
     }
 
     function phaseLabel(p) {

@@ -170,7 +170,7 @@
       const winnerEl = document.getElementById('winner');
       clearInterval(warmupTick);
 
-      if (!s || !s.format || s.phase === 'idle') {
+      if (!s || !s.format) {
         idle.classList.remove('hidden');
         main.classList.add('hidden');
         warmup.classList.add('hidden');
