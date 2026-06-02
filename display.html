@@ -44,17 +44,26 @@
     .team-panel:last-child .team-bar { background: rgba(255,255,255,.12); }
     .team-names { display: flex; flex-direction: column; gap: .3vw; }
     .player { font-size: clamp(22px, 3.2vw, 52px); font-weight: 900; letter-spacing: -1px; line-height: 1; text-transform: uppercase; color: #fff; }
-    .player-photos { display: flex; flex-direction: column; gap: .6vw; flex-shrink: 0; }
-    .player-avatar {
-      width: clamp(36px, 4.5vw, 72px); height: clamp(36px, 4.5vw, 72px);
-      border-radius: 50%; object-fit: cover;
-      border: 2px solid rgba(255,255,255,.15);
+    /* ── FOTOS GRANDES ── */
+    .team-players { display: flex; gap: 2vw; align-items: center; padding: 0 1vw; }
+    .player-card { display: flex; flex-direction: column; align-items: center; gap: .6vw; }
+    .player-photo-lg {
+      width: clamp(70px, 9vw, 150px); height: clamp(70px, 9vw, 150px);
+      border-radius: 12px; object-fit: cover;
+      border: 3px solid rgba(255,255,255,.12);
     }
-    .player-avatar.a { border-color: var(--orange); }
-    .player-avatar-placeholder {
-      width: clamp(36px, 4.5vw, 72px); height: clamp(36px, 4.5vw, 72px);
-      border-radius: 50%; background: rgba(255,255,255,.06);
-      border: 2px solid rgba(255,255,255,.1);
+    .team-panel:first-of-type .player-photo-lg { border-color: var(--orange); }
+    .player-photo-placeholder {
+      width: clamp(70px, 9vw, 150px); height: clamp(70px, 9vw, 150px);
+      border-radius: 12px; background: rgba(255,255,255,.05);
+      border: 3px solid rgba(255,255,255,.08);
+    }
+    .player-name-below {
+      font-size: clamp(10px, 1.1vw, 17px); font-weight: 700;
+      color: rgba(255,255,255,.75); text-transform: uppercase;
+      letter-spacing: .04em; text-align: center; line-height: 1.2;
+      max-width: clamp(70px, 9vw, 150px);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     /* ── COLUNAS GENÉRICAS ── */
@@ -232,9 +241,11 @@
       main.innerHTML = fmt.type === 'single' ? renderSingle(s, fmt) : renderBest3(s, fmt);
     }
 
-    function avatarHTML(photo, isA) {
-      if (photo) return `<img class="player-avatar ${isA ? 'a' : ''}" src="${photo}">`;
-      return `<div class="player-avatar-placeholder"></div>`;
+    function playerCardHTML(photo, name) {
+      const img = photo
+        ? `<img class="player-photo-lg" src="${photo}">`
+        : `<div class="player-photo-placeholder"></div>`;
+      return `<div class="player-card">${img}<span class="player-name-below">${esc(name)}</span></div>`;
     }
 
     function namesHTML(s) {
@@ -244,26 +255,34 @@
       const infoHTML = info.length
         ? `<div class="info-bar">${info.map((t,i) => i===0 ? `<span>${esc(t)}</span>` : `<div class="sep"></div><span>${esc(t)}</span>`).join('')}</div>`
         : `<div class="info-bar"></div>`;
-      const hasAnyPhoto = s.photo_a1 || s.photo_a2 || s.photo_b1 || s.photo_b2;
+
+      const hasPhotos = s.photo_a1 || s.photo_a2 || s.photo_b1 || s.photo_b2;
+
+      const teamAContent = hasPhotos
+        ? `<div class="team-players">
+            ${playerCardHTML(s.photo_a1, playerName(s.team_a, 1))}
+            ${playerCardHTML(s.photo_a2, playerName(s.team_a, 2))}
+           </div>`
+        : `<div class="team-names">
+            <span class="player">${esc(playerName(s.team_a, 1))}</span>
+            <span class="player">${esc(playerName(s.team_a, 2))}</span>
+           </div>`;
+
+      const teamBContent = hasPhotos
+        ? `<div class="team-players">
+            ${playerCardHTML(s.photo_b1, playerName(s.team_b, 1))}
+            ${playerCardHTML(s.photo_b2, playerName(s.team_b, 2))}
+           </div>`
+        : `<div class="team-names">
+            <span class="player">${esc(playerName(s.team_b, 1))}</span>
+            <span class="player">${esc(playerName(s.team_b, 2))}</span>
+           </div>`;
+
       return `
         <div class="teams">
           ${infoHTML}
-          <div class="team-panel">
-            <div class="team-bar"></div>
-            ${hasAnyPhoto ? `<div class="player-photos">${avatarHTML(s.photo_a1, true)}${avatarHTML(s.photo_a2, true)}</div>` : ''}
-            <div class="team-names">
-              <span class="player">${esc(playerName(s.team_a, 1))}</span>
-              <span class="player">${esc(playerName(s.team_a, 2))}</span>
-            </div>
-          </div>
-          <div class="team-panel">
-            <div class="team-bar"></div>
-            ${hasAnyPhoto ? `<div class="player-photos">${avatarHTML(s.photo_b1, false)}${avatarHTML(s.photo_b2, false)}</div>` : ''}
-            <div class="team-names">
-              <span class="player">${esc(playerName(s.team_b, 1))}</span>
-              <span class="player">${esc(playerName(s.team_b, 2))}</span>
-            </div>
-          </div>
+          <div class="team-panel">${teamAContent}</div>
+          <div class="team-panel">${teamBContent}</div>
         </div>
       `;
     }
