@@ -111,6 +111,9 @@
     .court-team-pts { font-size: 20px; font-weight: 800; color: var(--orange); line-height: 1; }
     .court-team-pts.b { color: var(--gray-900); }
     .court-empty { font-size: 13px; color: var(--gray-400); padding: 12px 0 18px; }
+    .warmup-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--gray-100); }
+    .warmup-icon { font-size: 12px; }
+    .warmup-timer-index { font-size: 13px; font-weight: 700; color: #2563EB; letter-spacing: .5px; }
 
     .court-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
@@ -188,7 +191,24 @@
         const [badgeClass, badgeText] = badges[phase] || badges.idle;
 
         let scoreHtml = `<div class="court-empty">Quadra disponível</div>`;
-        if (s && s.format && s.phase !== 'idle') {
+        if (s && s.format && s.phase === 'warmup') {
+          scoreHtml = `
+            <div class="court-score">
+              <div class="court-team-row">
+                <span class="court-team-name">${esc(s.team_a)}</span>
+                <span class="court-team-pts">${s.games_a}</span>
+              </div>
+              <div class="court-team-row">
+                <span class="court-team-name">${esc(s.team_b)}</span>
+                <span class="court-team-pts b">${s.games_b}</span>
+              </div>
+              <div class="warmup-row">
+                <span class="warmup-icon">⏱</span>
+                <span class="warmup-timer-index" id="wt-${sala}" data-end="${s.warmup_end || ''}">--:--</span>
+              </div>
+            </div>
+          `;
+        } else if (s && s.format && s.phase !== 'idle') {
           scoreHtml = `
             <div class="court-score">
               <div class="court-team-row">
@@ -232,6 +252,17 @@
       .subscribe();
 
     load();
+
+    setInterval(() => {
+      document.querySelectorAll('.warmup-timer-index').forEach(el => {
+        const end = el.dataset.end;
+        if (!end) return;
+        const left = Math.max(0, new Date(end) - Date.now());
+        const m = Math.floor(left / 60000);
+        const sec = Math.floor((left % 60000) / 1000);
+        el.textContent = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+      });
+    }, 500);
   </script>
 </body>
 </html>
