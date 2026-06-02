@@ -158,6 +158,28 @@
     }
     select:focus { border-color: var(--orange); }
 
+    /* Photo upload */
+    .name-photo-row { display: flex; align-items: center; gap: 6px; }
+    .name-photo-row input[type=text] { flex: 1; }
+    .photo-btn {
+      flex-shrink: 0;
+      width: 38px; height: 38px;
+      border: 1.5px solid var(--gray-200); border-radius: 9px;
+      background: white; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s;
+    }
+    .photo-btn:hover { border-color: var(--orange); }
+    .photo-preview {
+      width: 38px; height: 38px; flex-shrink: 0;
+      border-radius: 50%; overflow: hidden;
+      border: 2px solid var(--gray-200);
+      background: var(--gray-100);
+      display: none;
+    }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-preview.has-photo { display: block; border-color: var(--orange); }
+
     /* Score controls */
     .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .score-team {
@@ -358,11 +380,21 @@
             <div class="names-grid">
               <div class="input-group">
                 <label>Atleta 1</label>
-                <input type="text" id="name-a1" placeholder="Nome">
+                <div class="name-photo-row">
+                  <input type="text" id="name-a1" placeholder="Nome">
+                  <button class="photo-btn" onclick="triggerPhoto('a1')" title="Tirar foto">📷</button>
+                  <div class="photo-preview" id="prev-a1"></div>
+                </div>
+                <input type="file" id="file-a1" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('a1', this)">
               </div>
               <div class="input-group">
                 <label>Atleta 2</label>
-                <input type="text" id="name-a2" placeholder="Nome">
+                <div class="name-photo-row">
+                  <input type="text" id="name-a2" placeholder="Nome">
+                  <button class="photo-btn" onclick="triggerPhoto('a2')" title="Tirar foto">📷</button>
+                  <div class="photo-preview" id="prev-a2"></div>
+                </div>
+                <input type="file" id="file-a2" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('a2', this)">
               </div>
             </div>
           </div>
@@ -371,11 +403,21 @@
             <div class="names-grid">
               <div class="input-group">
                 <label>Atleta 1</label>
-                <input type="text" id="name-b1" placeholder="Nome">
+                <div class="name-photo-row">
+                  <input type="text" id="name-b1" placeholder="Nome">
+                  <button class="photo-btn" onclick="triggerPhoto('b1')" title="Tirar foto">📷</button>
+                  <div class="photo-preview" id="prev-b1"></div>
+                </div>
+                <input type="file" id="file-b1" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('b1', this)">
               </div>
               <div class="input-group">
                 <label>Atleta 2</label>
-                <input type="text" id="name-b2" placeholder="Nome">
+                <div class="name-photo-row">
+                  <input type="text" id="name-b2" placeholder="Nome">
+                  <button class="photo-btn" onclick="triggerPhoto('b2')" title="Tirar foto">📷</button>
+                  <div class="photo-preview" id="prev-b2"></div>
+                </div>
+                <input type="file" id="file-b2" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto('b2', this)">
               </div>
             </div>
           </div>
@@ -498,6 +540,7 @@
       document.getElementById('name-a2').value = s.player_a2 || '';
       document.getElementById('name-b1').value = s.player_b1 || '';
       document.getElementById('name-b2').value = s.player_b2 || '';
+      ['a1','a2','b1','b2'].forEach(k => showPhotoPreview(k, s['photo_' + k] || null));
 
       // Score card
       const ctrlNameA = document.getElementById('ctrl-name-a');
@@ -686,7 +729,57 @@
         team_a: 'Atleta A / Atleta B', team_b: 'Atleta C / Atleta D',
         player_a1: 'Atleta A', player_a2: 'Atleta B',
         player_b1: 'Atleta C', player_b2: 'Atleta D',
+        photo_a1: null, photo_a2: null, photo_b1: null, photo_b2: null,
       }));
+    }
+
+    // ── PHOTOS ──
+    function triggerPhoto(key) {
+      document.getElementById('file-' + key).click();
+    }
+
+    async function handlePhoto(key, input) {
+      const file = input.files[0];
+      if (!file) return;
+      const b64 = await compressImage(file, 160);
+      const s = Object.assign({}, state, { ['photo_' + key]: b64 });
+      showPhotoPreview(key, b64);
+      save(s);
+      toast('Foto salva!');
+      input.value = '';
+    }
+
+    function compressImage(file, size) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const min = Math.min(img.width, img.height);
+            const sx = (img.width - min) / 2;
+            const sy = (img.height - min) / 2;
+            ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function showPhotoPreview(key, src) {
+      const el = document.getElementById('prev-' + key);
+      if (!el) return;
+      if (src) {
+        el.innerHTML = `<img src="${src}">`;
+        el.classList.add('has-photo');
+      } else {
+        el.innerHTML = '';
+        el.classList.remove('has-photo');
+      }
     }
 
     function toast(msg) {

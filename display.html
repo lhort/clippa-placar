@@ -44,6 +44,18 @@
     .team-panel:last-child .team-bar { background: rgba(255,255,255,.12); }
     .team-names { display: flex; flex-direction: column; gap: .3vw; }
     .player { font-size: clamp(22px, 3.2vw, 52px); font-weight: 900; letter-spacing: -1px; line-height: 1; text-transform: uppercase; color: #fff; }
+    .player-photos { display: flex; flex-direction: column; gap: .6vw; flex-shrink: 0; }
+    .player-avatar {
+      width: clamp(36px, 4.5vw, 72px); height: clamp(36px, 4.5vw, 72px);
+      border-radius: 50%; object-fit: cover;
+      border: 2px solid rgba(255,255,255,.15);
+    }
+    .player-avatar.a { border-color: var(--orange); }
+    .player-avatar-placeholder {
+      width: clamp(36px, 4.5vw, 72px); height: clamp(36px, 4.5vw, 72px);
+      border-radius: 50%; background: rgba(255,255,255,.06);
+      border: 2px solid rgba(255,255,255,.1);
+    }
 
     /* ── COLUNAS GENÉRICAS ── */
     .col { display: flex; flex-direction: column; border-left: 1px solid var(--border); }
@@ -220,6 +232,11 @@
       main.innerHTML = fmt.type === 'single' ? renderSingle(s, fmt) : renderBest3(s, fmt);
     }
 
+    function avatarHTML(photo, isA) {
+      if (photo) return `<img class="player-avatar ${isA ? 'a' : ''}" src="${photo}">`;
+      return `<div class="player-avatar-placeholder"></div>`;
+    }
+
     function namesHTML(s) {
       const fase = s.fase ? FASE_LABELS[s.fase] || s.fase : '';
       const cat  = s.categoria ? CAT_LABELS[s.categoria] || s.categoria : '';
@@ -227,11 +244,13 @@
       const infoHTML = info.length
         ? `<div class="info-bar">${info.map((t,i) => i===0 ? `<span>${esc(t)}</span>` : `<div class="sep"></div><span>${esc(t)}</span>`).join('')}</div>`
         : `<div class="info-bar"></div>`;
+      const hasAnyPhoto = s.photo_a1 || s.photo_a2 || s.photo_b1 || s.photo_b2;
       return `
         <div class="teams">
           ${infoHTML}
           <div class="team-panel">
             <div class="team-bar"></div>
+            ${hasAnyPhoto ? `<div class="player-photos">${avatarHTML(s.photo_a1, true)}${avatarHTML(s.photo_a2, true)}</div>` : ''}
             <div class="team-names">
               <span class="player">${esc(playerName(s.team_a, 1))}</span>
               <span class="player">${esc(playerName(s.team_a, 2))}</span>
@@ -239,6 +258,7 @@
           </div>
           <div class="team-panel">
             <div class="team-bar"></div>
+            ${hasAnyPhoto ? `<div class="player-photos">${avatarHTML(s.photo_b1, false)}${avatarHTML(s.photo_b2, false)}</div>` : ''}
             <div class="team-names">
               <span class="player">${esc(playerName(s.team_b, 1))}</span>
               <span class="player">${esc(playerName(s.team_b, 2))}</span>
