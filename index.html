@@ -110,6 +110,11 @@
     .court-team-pts { font-size: 20px; font-weight: 800; color: var(--orange); line-height: 1; }
     .court-team-pts.b { color: var(--gray-900); }
     .court-empty { font-size: 13px; color: var(--gray-400); padding: 12px 0 18px; }
+    .sets-row-index { display: flex; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gray-100); }
+    .set-score { display: flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; color: var(--gray-400); }
+    .set-score.current { color: var(--orange); font-size: 15px; }
+    .set-score.past { color: var(--gray-700); }
+    .set-sep { font-weight: 400; color: var(--gray-300); font-size: 11px; }
     .warmup-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--gray-100); }
     .warmup-icon { font-size: 12px; }
     .warmup-timer-index { font-size: 13px; font-weight: 700; color: #6025E1; letter-spacing: .5px; }
@@ -190,34 +195,54 @@
         const [badgeClass, badgeText] = badges[phase] || badges.idle;
 
         let scoreHtml = `<div class="court-empty">Quadra disponível</div>`;
-        if (s && s.format && s.phase === 'warmup') {
-          scoreHtml = `
+        if (s && s.format && s.phase !== 'idle') {
+          const fmt = s.format ? FORMATS[s.format] : null;
+          const isBest3 = fmt?.type === 'best3';
+          const completed = s.completed_sets || [];
+
+          let ptsA, ptsB;
+          if (isBest3) {
+            const allA = [...completed.map(cs => cs.a), s.in_tb ? s.tb_a : s.games_a];
+            const allB = [...completed.map(cs => cs.b), s.in_tb ? s.tb_b : s.games_b];
+            const sets = allA.map((v, i) => {
+              const isPast = i < completed.length;
+              return `<span class="set-score ${isPast ? 'past' : 'current'}">${v}<span class="set-sep">–</span>${allB[i]}</span>`;
+            });
+            ptsA = `<span class="sets-inline">${sets.join('')}</span>`;
+            ptsB = null;
+          } else {
+            ptsA = `<span class="court-team-pts">${s.games_a}</span>`;
+            ptsB = `<span class="court-team-pts b">${s.games_b}</span>`;
+          }
+
+          const warmupExtra = s.phase === 'warmup' ? `
+            <div class="warmup-row">
+              <span class="warmup-icon">⏱</span>
+              <span class="warmup-timer-index" id="wt-${sala}" data-end="${s.warmup_end || ''}">--:--</span>
+            </div>` : '';
+
+          scoreHtml = isBest3 ? `
             <div class="court-score">
               <div class="court-team-row">
                 <span class="court-team-name">${esc(s.team_a)}</span>
-                <span class="court-team-pts">${s.games_a}</span>
               </div>
               <div class="court-team-row">
                 <span class="court-team-name">${esc(s.team_b)}</span>
-                <span class="court-team-pts b">${s.games_b}</span>
               </div>
-              <div class="warmup-row">
-                <span class="warmup-icon">⏱</span>
-                <span class="warmup-timer-index" id="wt-${sala}" data-end="${s.warmup_end || ''}">--:--</span>
-              </div>
+              <div class="sets-row-index">${ptsA}</div>
+              ${warmupExtra}
             </div>
-          `;
-        } else if (s && s.format && s.phase !== 'idle') {
-          scoreHtml = `
+          ` : `
             <div class="court-score">
               <div class="court-team-row">
                 <span class="court-team-name">${esc(s.team_a)}</span>
-                <span class="court-team-pts">${s.games_a}</span>
+                ${ptsA}
               </div>
               <div class="court-team-row">
                 <span class="court-team-name">${esc(s.team_b)}</span>
-                <span class="court-team-pts b">${s.games_b}</span>
+                ${ptsB}
               </div>
+              ${warmupExtra}
             </div>
           `;
         }
