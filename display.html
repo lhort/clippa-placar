@@ -158,7 +158,15 @@
 
     async function load() {
       const { data } = await sb.from('placar').select('state').eq('sala_id', sala).single();
-      state = data?.state || null;
+      if (data?.state && Object.keys(data.state).length) {
+        state = data.state;
+      } else {
+        state = Object.assign(newState('single_9_games', 'Atleta A / Atleta B', 'Atleta C / Atleta D'), {
+          player_a1: 'Atleta A', player_a2: 'Atleta B',
+          player_b1: 'Atleta C', player_b2: 'Atleta D',
+        });
+        await sb.from('placar').update({ state, updated_at: new Date().toISOString() }).eq('sala_id', sala);
+      }
       render(state);
     }
 
