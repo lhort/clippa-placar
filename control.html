@@ -741,7 +741,7 @@
     async function handlePhoto(key, input) {
       const file = input.files[0];
       if (!file) return;
-      const b64 = await compressImage(file, 600);
+      const b64 = await compressImage(file, 800);
       const s = Object.assign({}, state, { ['photo_' + key]: b64 });
       showPhotoPreview(key, b64);
       save(s);
