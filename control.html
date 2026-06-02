@@ -681,7 +681,12 @@
 
     function doReset() {
       if (!confirm('Resetar a partida?')) return;
-      save(resetMatch(state));
+      save(Object.assign(resetMatch(state), {
+        format: 'single_9_games',
+        team_a: 'Atleta A / Atleta B', team_b: 'Atleta C / Atleta D',
+        player_a1: 'Atleta A', player_a2: 'Atleta B',
+        player_b1: 'Atleta C', player_b2: 'Atleta D',
+      }));
     }
 
     function toast(msg) {
