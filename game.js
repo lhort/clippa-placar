@@ -188,7 +188,11 @@ function checkSet(s, team, fmt) {
     s['sets_' + team]++;
     s.games_a = 0; s.games_b = 0;
     s.in_tb = false; s.tb_a = 0; s.tb_b = 0;
-    return checkMatch(s, team);
+    const result = checkMatch(s, team);
+    if (!result.winner && fmt.tb && result.completed_sets.length === 2) {
+      result.in_tb = true;
+    }
+    return result;
   }
   return s;
 }
