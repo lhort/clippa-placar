@@ -192,11 +192,18 @@
 
       if (s.phase === 'warmup' && s.warmup_end) {
         warmup.classList.remove('hidden');
+        let transitioning = false;
         const tick = () => {
           const left = Math.max(0, new Date(s.warmup_end) - Date.now());
           const m = Math.floor(left/60000), sec = Math.floor((left%60000)/1000);
           document.getElementById('warmup-time').textContent = String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
-          if (!left) clearInterval(warmupTick);
+          if (!left && !transitioning) {
+            transitioning = true;
+            clearInterval(warmupTick);
+            const next = beginMatch(state);
+            state = next;
+            sb.from('placar').update({ state: next, updated_at: new Date().toISOString() }).eq('sala_id', sala).then(() => render(state));
+          }
         };
         tick(); warmupTick = setInterval(tick, 500);
       } else {
