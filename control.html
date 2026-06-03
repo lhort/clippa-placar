@@ -754,7 +754,7 @@
       const path = `sala-${sala}/${key}-${Date.now()}.jpg`;
       const { error } = await sb.storage.from('fotos').upload(path, file, {
         contentType: file.type || 'image/jpeg',
-        upsert: true,
+        upsert: false,
       });
 
       if (error) {
