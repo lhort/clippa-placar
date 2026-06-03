@@ -741,33 +741,35 @@
     async function handlePhoto(key, input) {
       const file = input.files[0];
       if (!file) return;
-      const b64 = await compressImage(file, 800);
-      const s = Object.assign({}, state, { ['photo_' + key]: b64 });
-      showPhotoPreview(key, b64);
-      save(s);
+      toast('Enviando foto...');
+
+      // Delete old photo if exists
+      const oldUrl = state['photo_' + key];
+      if (oldUrl && oldUrl.includes('/storage/v1/object/public/fotos/')) {
+        const oldPath = oldUrl.split('/storage/v1/object/public/fotos/')[1];
+        await sb.storage.from('fotos').remove([oldPath]);
+      }
+
+      // Upload original file to Supabase Storage
+      const path = `sala-${sala}/${key}-${Date.now()}.jpg`;
+      const { error } = await sb.storage.from('fotos').upload(path, file, {
+        contentType: file.type || 'image/jpeg',
+        upsert: true,
+      });
+
+      if (error) {
+        toast('Erro: ' + error.message);
+        input.value = '';
+        return;
+      }
+
+      const { data: urlData } = sb.storage.from('fotos').getPublicUrl(path);
+      const url = urlData.publicUrl;
+
+      showPhotoPreview(key, url);
+      save(Object.assign({}, state, { ['photo_' + key]: url }));
       toast('Foto salva!');
       input.value = '';
-    }
-
-    function compressImage(file, size) {
-      return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = size; canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            const min = Math.min(img.width, img.height);
-            const sx = (img.width - min) / 2;
-            const sy = (img.height - min) / 2;
-            ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
-            resolve(canvas.toDataURL('image/jpeg', 0.92));
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
     }
 
     function showPhotoPreview(key, src) {
